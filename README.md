@@ -6,6 +6,7 @@ Worker pool with persistency support.
 * Dispatches given task to most available worker, or queues it.
 * (If enabled) saves its state to specified storage. So you can restore unfinished tasks in case of a crash / restart.
 * Includes LevelDB storage module.
+* Supports custom storage/encoder.
 
 # Usage
 
