@@ -85,14 +85,22 @@ err := pool.RestoreTasks()
 ```
 ## Custom Storage
 
-If LevelDB doesn't work for your use case, you can implement your own storage. All you need is to keep it compliant with following
-interface:
+If LevelDB doesn't work for your use case, you can implement your own storage. All you need is to keep it compliant with following interface:
 
 ```go
 type Storage interface {
-	Init() error
-	Load(name string) (*persistentpool.Pool, error)
-	Write(pool Pool) error
+	Load(string) ([]byte, error)
+	Write(string, []byte) error
 }
 ```
-, to change a habit, you must keep the old cue, and deliver the old rew
+
+## Custom Encoding 
+
+You can choose a custom encoder/decoder for converting Go data structures into bytes, and bytes into Go data structures. Any struct compliant with below interface can be specified as an encoder;
+
+```go
+type Encoder interface {
+	Encode(Tasks) ([]byte, error)
+	Decode([]byte) (persistentpool.Tasks, error)
+}
+```
