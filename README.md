@@ -104,3 +104,13 @@ type Encoder interface {
 	Decode([]byte) (persistentpool.Tasks, error)
 }
 ```
+
+## Logs
+
+persistent-pool has an internal logging, silent by default. You can enable it by setting `LOG` environment variable;
+
+```
+LOG=persistentpool
+```
+
+It'll output all logs from persistent pool. For more info about logging, check out [logger](https://github.com/azer/logger).
