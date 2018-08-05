@@ -32,9 +32,16 @@ func NewPool(name string, concurrency int) *Pool {
 	return pool
 }
 
-func (pool *Pool) Add(task Task) {
-	pool.Tasks.Add(&task)
-	pool.Save()
+func (pool *Pool) Add(task Task) error {
+	if err := pool.Tasks.Add(&task); err != nil {
+		return err
+	}
+
+	if err := pool.Save(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (pool *Pool) Dispatch() {
