@@ -6,6 +6,7 @@ Worker pool with persistency support.
 * Dispatches given task to most available worker, or queues it.
 * (If enabled) saves its state to specified storage. So you can restore unfinished tasks in case of a crash / restart.
 * Includes LevelDB storage module.
+* Supports custom storage/encoder.
 
 # Usage
 
@@ -85,14 +86,32 @@ err := pool.RestoreTasks()
 ```
 ## Custom Storage
 
-If LevelDB doesn't work for your use case, you can implement your own storage. All you need is to keep it compliant with following
-interface:
+If LevelDB doesn't work for your use case, you can implement your own storage. All you need is to keep it compliant with following interface:
 
 ```go
 type Storage interface {
-	Init() error
-	Load(name string) (*persistentpool.Pool, error)
-	Write(pool Pool) error
+	Load(string) ([]byte, error)
+	Write(string, []byte) error
 }
 ```
-, to change a habit, you must keep the old cue, and deliver the old rew
+
+## Custom Encoding 
+
+You can choose a custom encoder/decoder for converting Go data structures into bytes, and bytes into Go data structures. Any struct compliant with below interface can be specified as an encoder;
+
+```go
+type Encoder interface {
+	Encode(Tasks) ([]byte, error)
+	Decode([]byte) (persistentpool.Tasks, error)
+}
+```
+
+## Logs
+
+persistent-pool has an internal logging, silent by default. You can enable it by setting `LOG` environment variable;
+
+```
+LOG=persistentpool
+```
+
+It'll output all logs from persistent pool. For more info about logging, check out [logger](https://github.com/azer/logger).
