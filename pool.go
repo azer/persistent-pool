@@ -145,7 +145,10 @@ func (pool *Pool) Save() error {
 		return nil
 	}
 
+	(*pool).Tasks.RLock()
 	encoded, err := pool.Encoder.Encode(*pool.Tasks)
+	(*pool).Tasks.RUnlock()
+
 	if err != nil {
 		log.Error("Can not encode pool", logger.Attrs{
 			"pool":  pool.Name,

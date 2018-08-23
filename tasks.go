@@ -50,7 +50,9 @@ func (tasks *Tasks) Done(id string) error {
 }
 
 func (tasks *Tasks) GetTaskById(id string) (*Task, bool) {
+	tasks.memoryLock.RLock()
 	task, ok := tasks.Memory[id]
+	tasks.memoryLock.RUnlock()
 	return task, ok
 }
 
@@ -83,4 +85,14 @@ func (tasks *Tasks) Len() int {
 	tasks.queueLock.RUnlock()
 
 	return queue
+}
+
+func (tasks *Tasks) RLock() {
+	tasks.memoryLock.RLock()
+	tasks.queueLock.RLock()
+}
+
+func (tasks *Tasks) RUnlock() {
+	tasks.memoryLock.RUnlock()
+	tasks.queueLock.RUnlock()
 }
