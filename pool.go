@@ -4,22 +4,28 @@ import (
 	"errors"
 	"github.com/azer/logger"
 	"sync"
+	"time"
 )
 
 var log = logger.New("persistent-pool")
 
 type Pool struct {
-	Name         string
-	Concurrency  int
-	Encoder      Encoder
-	Storage      Storage
-	runningLock  sync.RWMutex
-	Running      bool
-	Tasks        *Tasks
-	OnDone       func(taskId string)
-	OnFail       func(taskId string)
-	QueueChannel chan string
-	CloseChannel chan bool
+	Name              string
+	Concurrency       int
+	Encoder           Encoder
+	Storage           Storage
+	runningLock       sync.RWMutex
+	Running           bool
+	Tasks             *Tasks
+	OnDone            func(taskId string)
+	OnFail            func(taskId string)
+	QueueChannel      chan string
+	CloseChannel      chan bool
+	GracefulSave      bool
+	saveSchedulerLock sync.RWMutex
+	waitingForSave    bool
+	LastSavedAt       int64
+	MinSaveIntervalMs int64
 }
 
 func NewPool(name string, concurrency int) *Pool {
@@ -37,7 +43,7 @@ func (pool *Pool) Add(task Task) error {
 		return err
 	}
 
-	if err := pool.Save(); err != nil {
+	if err := pool.ScheduleSave(); err != nil {
 		return err
 	}
 
@@ -76,7 +82,7 @@ func (pool *Pool) MarkTaskAsDone(taskId string) {
 		})
 	}
 
-	pool.Save()
+	pool.ScheduleSave()
 
 	if pool.OnDone != nil {
 		pool.OnDone(taskId)
@@ -92,7 +98,7 @@ func (pool *Pool) MarkTaskAsFailed(taskId string) {
 		})
 	}
 
-	pool.Save()
+	pool.ScheduleSave()
 
 	if pool.OnFail != nil {
 		pool.OnFail(taskId)
@@ -145,6 +151,11 @@ func (pool *Pool) Save() error {
 		return nil
 	}
 
+	pool.saveSchedulerLock.Lock()
+	pool.LastSavedAt = time.Now().UnixNano() / 1000000
+	pool.waitingForSave = false
+	pool.saveSchedulerLock.Unlock()
+
 	(*pool).Tasks.RLock()
 	encoded, err := pool.Encoder.Encode(*pool.Tasks)
 	(*pool).Tasks.RUnlock()
@@ -186,4 +197,41 @@ func (pool *Pool) Stop() {
 		close(pool.QueueChannel)
 		close(pool.CloseChannel)
 	}()
+}
+
+func (pool *Pool) ScheduleSave() error {
+	if pool.Storage == nil || pool.Encoder == nil {
+		return nil
+	}
+
+	if !pool.GracefulSave {
+		return pool.Save()
+	}
+
+	now := time.Now().UnixNano() / 1000000
+
+	pool.saveSchedulerLock.Lock()
+	log.Info("%d", now-pool.LastSavedAt)
+	shouldBeScheduled := now-pool.LastSavedAt < pool.MinSaveIntervalMs
+	alreadyScheduled := pool.waitingForSave
+	pool.saveSchedulerLock.Unlock()
+
+	if !shouldBeScheduled {
+		return pool.Save()
+	}
+
+	if alreadyScheduled {
+		return nil
+	}
+
+	pool.saveSchedulerLock.Lock()
+	pool.waitingForSave = true
+	pool.saveSchedulerLock.Unlock()
+
+	go func() {
+		time.Sleep(time.Duration(pool.MinSaveIntervalMs) * time.Millisecond)
+		pool.Save()
+	}()
+
+	return nil
 }
