@@ -25,7 +25,7 @@ Now you can create and configure the worker pool that you'd like to reserve for 
 
 ```go
 import (
-  "github.com/kozmos/persistent-pool"
+  "github.com/azer/persistent-pool"
 )
 
 const concurrency = 10 // 10 Goroutines will be created and reserved
@@ -52,7 +52,7 @@ First, we need to define the type of storage we'd like;
 
 ```go
 import (
-  "github.com/kozmos/persistent-pool/leveldb"
+  "github.com/azer/persistent-pool/leveldb"
 )
 
 storage, err := leveldb.New("./")
@@ -63,7 +63,7 @@ Second, we need an encoder/decoder to be able to convert Go data structures to b
 
 ```go
 import (
-  "github.com/kozmos/persistent-pool/gob"
+  "github.com/azer/persistent-pool/gob"
 )
 
 encoder := gob.New()
